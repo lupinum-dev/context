@@ -27,7 +27,6 @@ type ContextActionRequest =
       services: ExtensionWiring
       treeMode: ProjectTreeMode
       outputMode: ContextOutputMode
-      workspaceRoot: string
       exportOptions: PromptExportOptions
       updatePreview: (text: string) => void | Promise<void>
       postState?: () => void | Promise<void>
@@ -76,7 +75,13 @@ export async function runContextAction(
   }
 
   if (request.action === 'save') {
-    const target = buildPromptExportTarget(request.workspaceRoot, request.exportOptions, new Date())
+    const workspaceRoot = request.services.getPrimaryWorkspaceRoot()
+    if (!workspaceRoot) {
+      vscode.window.showErrorMessage('Open a local workspace before saving context.')
+      return { completed: false }
+    }
+
+    const target = buildPromptExportTarget(workspaceRoot, request.exportOptions, new Date())
     await request.services.fileSystem.writeText(target.absolutePath, output.text)
     await request.updatePreview(output.text)
     await request.postState?.()

@@ -552,6 +552,30 @@ test('ignore path normalization treats Windows separators like POSIX separators'
   assert.equal(isIgnored('src\\public\\local.env'), false)
 })
 
+test('built-in ignore rules cannot be re-included by later negation layers', () => {
+  const isIgnored = createLayeredIgnoreMatcher(
+    [
+      {
+        basePath: '',
+        patterns: [
+          '!.env.local',
+          '!certs/client.pem',
+          '!secrets/client.txt',
+          '!node_modules/pkg/index.js',
+        ],
+      },
+    ],
+    (patterns) => ignore().add(patterns),
+    ALWAYS_IGNORE,
+  )
+
+  assert.equal(isIgnored('.env.local'), true)
+  assert.equal(isIgnored('certs/client.pem'), true)
+  assert.equal(isIgnored('secrets/client.txt'), true)
+  assert.equal(isIgnored('node_modules/pkg/index.js'), true)
+  assert.equal(isIgnored('src/app.ts'), false)
+})
+
 test('ignored secret-like files cannot be indexed or selected into context', async () => {
   const workspace: IndexedWorkspace = {
     id: 'w',

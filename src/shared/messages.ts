@@ -3,6 +3,8 @@ import type { PromptExportFormat, PromptExportOptions } from '../core/export/Exp
 import { isTokenEstimateProfileId } from '../core/tokens/TokenEstimateProfiles'
 import { isEstimateSummaryStatId } from './estimateSummary'
 
+export type { ContextOutputMode, ProjectTreeMode, PromptExportFormat, PromptExportOptions }
+
 export type WebviewToExtensionMessage =
   | { type: 'ready' }
   | { type: 'estimateSummary.setProfiles'; profileIds: readonly string[] }

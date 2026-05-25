@@ -11,5 +11,6 @@ export function isSupportedLocalWorkspace(
   if (remoteName) {
     return false
   }
-  return (workspaceFolders ?? []).every((folder) => folder.uri.scheme === 'file')
+  const folders = workspaceFolders ?? []
+  return folders.length > 0 && folders.every((folder) => folder.uri.scheme === 'file')
 }

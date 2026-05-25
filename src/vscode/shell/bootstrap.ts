@@ -73,11 +73,7 @@ export async function bootstrapLupinumContext(
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview')],
       },
     )
-    const currentHandler = new WebviewMessageHandler(
-      services,
-      panel,
-      services.getPrimaryWorkspaceRoot() ?? process.cwd(),
-    )
+    const currentHandler = new WebviewMessageHandler(services, panel)
     handler = currentHandler
     const webviewDir = vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview')
     const scriptUri = panel.webview

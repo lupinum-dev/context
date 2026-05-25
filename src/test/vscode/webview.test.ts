@@ -1,5 +1,7 @@
 import { test } from 'vite-plus/test'
 import assert from 'node:assert/strict'
+import * as path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { normalizePromptExportOptions } from '../../core/export/ExportOptions'
 import { getWebviewHtml } from '../../vscode/webview/webviewHost'
 import { isExtensionToWebviewMessage, isWebviewToExtensionMessage } from '../../shared/messages'
@@ -177,4 +179,23 @@ test('webview host html includes CSP, nonce, initial state, and Vue bundle scrip
   assert.ok(html.includes('window.__INITIAL_STATE__'), 'injects initial state')
   assert.ok(!html.includes('<script>evil</script>'), 'escapes raw <script> from injected state')
   assert.ok(html.includes('\\u003cscript>evil\\u003c/script>'), 'state JSON escapes < to \\u003c')
+})
+
+test('boundary helper scans Vue files and imports inside script blocks', async () => {
+  const boundary = (await import(
+    pathToFileURL(path.join(process.cwd(), 'scripts/check-boundaries.mjs')).href
+  )) as {
+    isSourceFile(file: string): boolean
+    readImportSpecifiers(source: string): string[]
+  }
+
+  assert.equal(boundary.isSourceFile('src/webview/components/ContextOptionsPanel.vue'), true)
+  assert.deepEqual(
+    boundary.readImportSpecifiers(`
+      <script setup lang="ts">
+      import type { ProjectTreeMode } from '../../core/context/ContextFormat'
+      </script>
+    `),
+    ['../../core/context/ContextFormat'],
+  )
 })

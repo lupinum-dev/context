@@ -16,7 +16,7 @@ export class VsCodeFileSystem implements FileIndexHost {
 
   async listFiles(workspace: IndexedWorkspace): Promise<string[]> {
     const layers = await this.createIgnoreLayers(workspace)
-    const isIgnored = createLayeredIgnoreMatcher(layers, createIgnoreMatcher)
+    const isIgnored = createLayeredIgnoreMatcher(layers, createIgnoreMatcher, ALWAYS_IGNORE)
     const exclude = buildFindFilesExcludePattern()
     const startedAt = Date.now()
     const uris = await vscode.workspace.findFiles(
@@ -74,10 +74,6 @@ export class VsCodeFileSystem implements FileIndexHost {
 
   private async createIgnoreLayers(workspace: IndexedWorkspace): Promise<IgnoreRuleLayer[]> {
     const layers: IgnoreRuleLayer[] = [
-      {
-        basePath: '',
-        patterns: ALWAYS_IGNORE,
-      },
       {
         basePath: '',
         patterns: await this.readIgnoreFile(path.join(workspace.rootPath, '.contextignore')),

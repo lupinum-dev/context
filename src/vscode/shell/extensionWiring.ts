@@ -15,6 +15,7 @@ import { VsCodeFileSystem } from '../VsCodeFileSystem'
 import { VsCodeGit } from '../VsCodeGit'
 import { OutputLogger } from './OutputLogger'
 import { isSupportedLocalWorkspace } from './workspaceSupport'
+import { createWorkspaceId } from './workspaceIdentity'
 
 export interface ExtensionWiring {
   getWorkspaces(): IndexedWorkspace[]
@@ -96,8 +97,8 @@ export function createExtensionWiring(context: vscode.ExtensionContext): Extensi
 }
 
 function readWorkspaceFolders(): IndexedWorkspace[] {
-  return (vscode.workspace.workspaceFolders ?? []).map((folder, index) => ({
-    id: String(index),
+  return (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
+    id: createWorkspaceId(folder.uri.fsPath),
     name: folder.name,
     rootPath: folder.uri.fsPath,
   }))

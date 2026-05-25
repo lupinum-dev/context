@@ -12,6 +12,7 @@ export function createLayeredIgnoreMatcher(
   createMatcher: (patterns: readonly string[]) => {
     test(path: string): { ignored: boolean; unignored: boolean }
   },
+  nonNegatablePatterns: readonly string[] = [],
 ): (relativePath: string) => boolean {
   const compiledLayers = layers
     .filter((layer) => layer.patterns.length > 0)
@@ -19,6 +20,8 @@ export function createLayeredIgnoreMatcher(
       basePath: normalizeIgnorePath(layer.basePath),
       matcher: createMatcher(layer.patterns),
     }))
+  const nonNegatableMatcher =
+    nonNegatablePatterns.length > 0 ? createMatcher(nonNegatablePatterns) : null
 
   return (relativePath) => {
     const normalizedPath = normalizeIgnorePath(relativePath)
@@ -39,7 +42,7 @@ export function createLayeredIgnoreMatcher(
       }
     }
 
-    return ignored
+    return ignored || (nonNegatableMatcher?.test(normalizedPath).ignored ?? false)
   }
 }
 

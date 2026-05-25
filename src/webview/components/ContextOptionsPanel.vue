@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { ContextOutputMode, ProjectTreeMode } from '../../core/context/ContextFormat'
-import type { PromptExportOptions } from '../../core/export/ExportOptions'
-import type { ContextPanelState, WebviewToExtensionMessage } from '../../shared/messages'
+import type {
+  ContextOutputMode,
+  ContextPanelState,
+  ProjectTreeMode,
+  PromptExportOptions,
+  WebviewToExtensionMessage,
+} from '../../shared/messages'
 
 const props = defineProps<{
   state: ContextPanelState

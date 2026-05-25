@@ -24,7 +24,6 @@ export class WebviewMessageHandler {
   constructor(
     private services: ExtensionWiring,
     private panel: vscode.WebviewPanel,
-    private workspaceRoot: string,
   ) {
     this.treeMode = services.workspaceState.getTreeMode()
     this.outputMode = services.workspaceState.getOutputMode()
@@ -110,7 +109,6 @@ export class WebviewMessageHandler {
           services: this.services,
           treeMode: this.treeMode,
           outputMode: this.outputMode,
-          workspaceRoot: this.workspaceRoot,
           exportOptions: this.exportOptions,
           updatePreview: (text) => this.post({ type: 'context.previewUpdated', text }),
           postState: () => this.postState(),

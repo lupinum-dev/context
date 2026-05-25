@@ -1,85 +1,99 @@
 import { readdir, readFile, stat } from 'fs/promises'
 import path from 'path'
+import { pathToFileURL } from 'url'
 
-const rootDir = process.cwd()
-const srcDir = path.join(rootDir, 'src')
-const failures = []
+export async function findBoundaryFailures(rootDir = process.cwd()) {
+  const srcDir = path.join(rootDir, 'src')
+  const failures = []
 
-const rules = [
-  {
-    name: 'core',
-    dir: path.join(srcDir, 'core'),
-    forbid: [
-      { pattern: /^vscode$/, reason: 'core must not import vscode' },
-      { pattern: /^(\.\.\/)+app(\/|$)/, reason: 'core must not import app' },
-      { pattern: /^(\.\.\/)+vscode(\/|$)/, reason: 'core must not import vscode shell code' },
-      { pattern: /^(\.\.\/)+webview(\/|$)/, reason: 'core must not import webview code' },
-    ],
-  },
-  {
-    name: 'app',
-    dir: path.join(srcDir, 'app'),
-    forbid: [
-      { pattern: /^vscode$/, reason: 'app must not import vscode' },
-      {
-        pattern: /^(\.\.\/)+vscode(\/|$)/,
-        reason: 'app must not import concrete VS Code adapters',
-      },
-      { pattern: /^(\.\.\/)+webview(\/|$)/, reason: 'app must not import webview code' },
-    ],
-  },
-  {
-    name: 'webview',
-    dir: path.join(srcDir, 'webview'),
-    forbid: [
-      { pattern: /^vscode$/, reason: 'webview must not import vscode' },
-      { pattern: /^(\.\.\/)+core(\/|$)/, reason: 'webview must not import core directly' },
-      { pattern: /^(\.\.\/)+app(\/|$)/, reason: 'webview must not import app directly' },
-      { pattern: /^(\.\.\/)+vscode(\/|$)/, reason: 'webview must not import VS Code shell code' },
-    ],
-  },
-  {
-    name: 'shared',
-    dir: path.join(srcDir, 'shared'),
-    forbid: [
-      { pattern: /^vscode$/, reason: 'shared must not import vscode' },
-      { pattern: /^(\.\.\/)+app(\/|$)/, reason: 'shared must not import app' },
-      { pattern: /^(\.\.\/)+vscode(\/|$)/, reason: 'shared must not import vscode shell code' },
-      { pattern: /^(\.\.\/)+webview(\/|$)/, reason: 'shared must not import webview code' },
-    ],
-  },
-]
+  const rules = [
+    {
+      name: 'core',
+      dir: path.join(srcDir, 'core'),
+      forbid: [
+        { pattern: /^vscode$/, reason: 'core must not import vscode' },
+        { pattern: /^(\.\.\/)+app(\/|$)/, reason: 'core must not import app' },
+        { pattern: /^(\.\.\/)+vscode(\/|$)/, reason: 'core must not import vscode shell code' },
+        { pattern: /^(\.\.\/)+webview(\/|$)/, reason: 'core must not import webview code' },
+      ],
+    },
+    {
+      name: 'app',
+      dir: path.join(srcDir, 'app'),
+      forbid: [
+        { pattern: /^vscode$/, reason: 'app must not import vscode' },
+        {
+          pattern: /^(\.\.\/)+vscode(\/|$)/,
+          reason: 'app must not import concrete VS Code adapters',
+        },
+        { pattern: /^(\.\.\/)+webview(\/|$)/, reason: 'app must not import webview code' },
+      ],
+    },
+    {
+      name: 'webview',
+      dir: path.join(srcDir, 'webview'),
+      forbid: [
+        { pattern: /^vscode$/, reason: 'webview must not import vscode' },
+        { pattern: /^(\.\.\/)+core(\/|$)/, reason: 'webview must not import core directly' },
+        { pattern: /^(\.\.\/)+app(\/|$)/, reason: 'webview must not import app directly' },
+        {
+          pattern: /^(\.\.\/)+vscode(\/|$)/,
+          reason: 'webview must not import VS Code shell code',
+        },
+      ],
+    },
+    {
+      name: 'shared',
+      dir: path.join(srcDir, 'shared'),
+      forbid: [
+        { pattern: /^vscode$/, reason: 'shared must not import vscode' },
+        { pattern: /^(\.\.\/)+app(\/|$)/, reason: 'shared must not import app' },
+        { pattern: /^(\.\.\/)+vscode(\/|$)/, reason: 'shared must not import vscode shell code' },
+        { pattern: /^(\.\.\/)+webview(\/|$)/, reason: 'shared must not import webview code' },
+      ],
+    },
+  ]
 
-for (const rule of rules) {
-  if (!(await exists(rule.dir))) {
-    continue
-  }
-
-  for (const file of await listFiles(rule.dir)) {
-    if (!/\.[cm]?(t|j)sx?$/.test(file)) {
+  for (const rule of rules) {
+    if (!(await exists(rule.dir))) {
       continue
     }
-    const source = await readFile(file, 'utf8')
-    for (const moduleName of readImportSpecifiers(source)) {
-      for (const forbidden of rule.forbid) {
-        if (forbidden.pattern.test(moduleName)) {
-          failures.push(
-            `${path.relative(rootDir, file)} imports ${moduleName}: ${forbidden.reason}`,
-          )
+
+    for (const file of await listFiles(rule.dir)) {
+      if (!isSourceFile(file)) {
+        continue
+      }
+      const source = await readFile(file, 'utf8')
+      for (const moduleName of readImportSpecifiers(source)) {
+        for (const forbidden of rule.forbid) {
+          if (forbidden.pattern.test(moduleName)) {
+            failures.push(
+              `${path.relative(rootDir, file)} imports ${moduleName}: ${forbidden.reason}`,
+            )
+          }
         }
       }
     }
   }
+
+  return failures
 }
 
-if (failures.length > 0) {
-  console.error('Architecture boundary check failed:')
-  for (const failure of failures) {
-    console.error(`- ${failure}`)
+export function isSourceFile(file) {
+  return /(?:\.vue|\.[cm]?(t|j)sx?)$/.test(file)
+}
+
+async function main() {
+  const failures = await findBoundaryFailures()
+  if (failures.length > 0) {
+    console.error('Architecture boundary check failed:')
+    for (const failure of failures) {
+      console.error(`- ${failure}`)
+    }
+    process.exitCode = 1
+  } else {
+    console.log('Architecture boundary check passed.')
   }
-  process.exitCode = 1
-} else {
-  console.log('Architecture boundary check passed.')
 }
 
 async function exists(targetPath) {
@@ -107,7 +121,7 @@ async function listFiles(dir) {
   return files
 }
 
-function readImportSpecifiers(source) {
+export function readImportSpecifiers(source) {
   const specifiers = []
   const importExportPattern =
     /(?:import|export)\s+(?:type\s+)?(?:[^'"]+?\s+from\s+)?['"]([^'"]+)['"]/g
@@ -121,4 +135,8 @@ function readImportSpecifiers(source) {
   }
 
   return specifiers
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main()
 }
