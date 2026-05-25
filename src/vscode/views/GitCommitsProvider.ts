@@ -2,14 +2,23 @@ import * as vscode from 'vscode'
 import type { GitSelection } from '../../core/git/GitSelection'
 import type { GitCommit } from '../../core/git/GitTypes'
 
-export class GitCommitsProvider implements vscode.TreeDataProvider<GitCommit> {
+export class GitCommitsProvider implements vscode.TreeDataProvider<GitCommit>, vscode.Disposable {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<
     GitCommit | undefined | void
   >()
+  private readonly disposables: Array<() => void> = []
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event
 
   constructor(private gitSelection: GitSelection) {
-    this.gitSelection.onDidChange(() => this.refresh())
+    this.disposables.push(this.gitSelection.onDidChange(() => this.refresh()))
+  }
+
+  dispose(): void {
+    for (const dispose of this.disposables) {
+      dispose()
+    }
+    this.disposables.length = 0
+    this.onDidChangeTreeDataEmitter.dispose()
   }
 
   refresh(): void {

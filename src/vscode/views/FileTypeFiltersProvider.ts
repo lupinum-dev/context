@@ -6,14 +6,25 @@ export interface SelectionFilterNode {
   group: SelectionFilterGroup
 }
 
-export class FileTypeFiltersProvider implements vscode.TreeDataProvider<SelectionFilterNode> {
+export class FileTypeFiltersProvider
+  implements vscode.TreeDataProvider<SelectionFilterNode>, vscode.Disposable
+{
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<
     SelectionFilterNode | undefined | void
   >()
+  private readonly disposables: Array<() => void> = []
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event
 
   constructor(private fileSelection: FileSelection) {
-    this.fileSelection.onDidChange(() => this.refresh())
+    this.disposables.push(this.fileSelection.onDidChange(() => this.refresh()))
+  }
+
+  dispose(): void {
+    for (const dispose of this.disposables) {
+      dispose()
+    }
+    this.disposables.length = 0
+    this.onDidChangeTreeDataEmitter.dispose()
   }
 
   refresh(): void {

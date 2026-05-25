@@ -625,6 +625,107 @@ test('ContextWorkflow summarizes selected file count and text lines', async () =
   assert.equal(reads, 1)
 })
 
+test('ContextWorkflow bounds selected line count reads', async () => {
+  const workspace: IndexedWorkspace = { id: 'w', name: 'demo', rootPath: '/repo' }
+  const relativePaths = Array.from({ length: 40 }, (_, index) => `src/${index}.ts`)
+  const profile = getTokenEstimateProfile('claude')
+  const index = new FileIndex(
+    {
+      async listFiles() {
+        return relativePaths.map((relativePath) => `/repo/${relativePath}`)
+      },
+      async statFile() {
+        return { sizeBytes: 10, mtimeMs: 1 }
+      },
+    },
+    [workspace],
+    profile,
+  )
+  await index.ensureFresh()
+  const selection = new FileSelection()
+  selection.setNodeIncluded(index.getSnapshot(), 'w:', true)
+  let activeReads = 0
+  let maxActiveReads = 0
+  const service = new ContextWorkflow(
+    index,
+    selection,
+    {
+      async readBytes() {
+        return new Uint8Array()
+      },
+      async readText() {
+        activeReads += 1
+        maxActiveReads = Math.max(maxActiveReads, activeReads)
+        await new Promise((resolve) => setTimeout(resolve, 1))
+        activeReads -= 1
+        return 'one\n'
+      },
+    },
+    profile,
+    () => [workspace],
+  )
+
+  const summary = await service.summarizeSelectedFiles()
+
+  assert.equal(summary.selectedFileCount, 40)
+  assert.equal(summary.selectedLineCount, 40)
+  assert.ok(maxActiveReads <= 16, `expected at most 16 active reads, saw ${maxActiveReads}`)
+})
+
+test('ContextWorkflow bounds selected context file reads', async () => {
+  const workspace: IndexedWorkspace = { id: 'w', name: 'demo', rootPath: '/repo' }
+  const relativePaths = Array.from({ length: 40 }, (_, index) => `src/${index}.ts`)
+  const profile = getTokenEstimateProfile('claude')
+  const index = new FileIndex(
+    {
+      async listFiles() {
+        return relativePaths.map((relativePath) => `/repo/${relativePath}`)
+      },
+      async statFile() {
+        return { sizeBytes: 10, mtimeMs: 1 }
+      },
+    },
+    [workspace],
+    profile,
+  )
+  await index.ensureFresh()
+  const selection = new FileSelection()
+  selection.setNodeIncluded(index.getSnapshot(), 'w:', true)
+  let activeReads = 0
+  let maxActiveReads = 0
+  const trackRead = async () => {
+    activeReads += 1
+    maxActiveReads = Math.max(maxActiveReads, activeReads)
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    activeReads -= 1
+  }
+  const service = new ContextWorkflow(
+    index,
+    selection,
+    {
+      async readBytes() {
+        await trackRead()
+        return new Uint8Array()
+      },
+      async readText() {
+        await trackRead()
+        return 'export const value = true\n'
+      },
+    },
+    profile,
+    () => [workspace],
+  )
+
+  const output = await service.createContextFromSelection({
+    prefix: '',
+    treeMode: 'none',
+    outputMode: 'compact',
+  })
+
+  assert.equal(output.fileCount, 40)
+  assert.ok(maxActiveReads <= 32, `expected at most 32 active reads, saw ${maxActiveReads}`)
+})
+
 test('ContextWorkflow summary skips binary files for line counts', async () => {
   const service = await createSingleFileContextService('src/blob.dat', 'not counted\n', undefined, {
     readBytes() {

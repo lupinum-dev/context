@@ -3,18 +3,29 @@ import type { FileIndex, IndexedNode } from '../../core/files/FileIndex'
 import type { FileSelection } from '../../core/files/FileSelection'
 import { formatEstimatedTokenCount } from '../../core/tokens/TokenEstimateProfiles'
 
-export class FileTreeProvider implements vscode.TreeDataProvider<IndexedNode> {
+export class FileTreeProvider implements vscode.TreeDataProvider<IndexedNode>, vscode.Disposable {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<
     IndexedNode | undefined | void
   >()
+  private readonly disposables: Array<() => void> = []
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event
 
   constructor(
     private fileIndex: FileIndex,
     private fileSelection: FileSelection,
   ) {
-    this.fileIndex.onDidChange(() => this.refresh())
-    this.fileSelection.onDidChange(() => this.refresh())
+    this.disposables.push(
+      this.fileIndex.onDidChange(() => this.refresh()),
+      this.fileSelection.onDidChange(() => this.refresh()),
+    )
+  }
+
+  dispose(): void {
+    for (const dispose of this.disposables) {
+      dispose()
+    }
+    this.disposables.length = 0
+    this.onDidChangeTreeDataEmitter.dispose()
   }
 
   refresh(): void {

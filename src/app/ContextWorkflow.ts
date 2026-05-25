@@ -76,6 +76,8 @@ interface CachedLineCount {
 
 const LARGE_CONTEXT_TOKEN_THRESHOLD = 250_000
 const LARGE_CONTEXT_CHARACTER_THRESHOLD = 1_000_000
+const SELECTED_LINE_COUNT_CONCURRENCY = 16
+const CONTEXT_FILE_READ_CONCURRENCY = 32
 
 export class ContextWorkflow {
   private selectedLineCountCache = new Map<string, CachedLineCount>()
@@ -207,8 +209,10 @@ export class ContextWorkflow {
     await this.fileIndex.ensureFresh()
     this.fileSelection.reconcile(this.fileIndex.getSnapshot())
     const selection = this.fileSelection.getSnapshot()
-    const selectedLineCounts = await Promise.all(
-      selection.selectedFiles.map((file) => this.countSelectedFileLines(file)),
+    const selectedLineCounts = await mapWithConcurrency(
+      selection.selectedFiles,
+      SELECTED_LINE_COUNT_CONCURRENCY,
+      (file) => this.countSelectedFileLines(file),
     )
     return {
       selectedFileCount: selection.selectedFiles.length,
@@ -317,45 +321,41 @@ export class ContextWorkflow {
     files: readonly IndexedFile[],
   ): Promise<Map<string, ContextFileSnapshot>> {
     const snapshots = new Map<string, ContextFileSnapshot>()
-    await Promise.all(
-      files.map(async (file) => {
-        try {
-          snapshots.set(file.id, {
-            content: await this.fileSystem.readText(file.absolutePath),
-          })
-        } catch {
-          // Missing snapshots are converted to user-visible context warnings by the assembler.
-        }
-      }),
-    )
+    await mapWithConcurrency(files, CONTEXT_FILE_READ_CONCURRENCY, async (file) => {
+      try {
+        snapshots.set(file.id, {
+          content: await this.fileSystem.readText(file.absolutePath),
+        })
+      } catch {
+        // Missing snapshots are converted to user-visible context warnings by the assembler.
+      }
+    })
     return snapshots
   }
 
   private async inspectFilesForSafety(files: readonly IndexedFile[]): Promise<ContextWarning[]> {
     const warnings: ContextWarning[] = []
-    await Promise.all(
-      files.map(async (file) => {
-        const beforeRead = decideFileSafetyBeforeRead(file, this.getWorkspaces())
-        if (beforeRead.action === 'omit') {
-          warnings.push(toOmittedFileWarning(file, beforeRead.reason, beforeRead.message))
-          return
-        }
+    await mapWithConcurrency(files, CONTEXT_FILE_READ_CONCURRENCY, async (file) => {
+      const beforeRead = decideFileSafetyBeforeRead(file, this.getWorkspaces())
+      if (beforeRead.action === 'omit') {
+        warnings.push(toOmittedFileWarning(file, beforeRead.reason, beforeRead.message))
+        return
+      }
 
-        try {
-          const sample = await this.fileSystem.readBytes(file.absolutePath, BINARY_SNIFF_BYTES)
-          const sampled = decideFileSafetyFromSample(sample)
-          if (sampled.action === 'omit') {
-            warnings.push(toOmittedFileWarning(file, sampled.reason, sampled.message))
-          }
-        } catch {
-          warnings.push({
-            type: 'missingFile',
-            fileId: file.id,
-            path: file.relativePath,
-          })
+      try {
+        const sample = await this.fileSystem.readBytes(file.absolutePath, BINARY_SNIFF_BYTES)
+        const sampled = decideFileSafetyFromSample(sample)
+        if (sampled.action === 'omit') {
+          warnings.push(toOmittedFileWarning(file, sampled.reason, sampled.message))
         }
-      }),
-    )
+      } catch {
+        warnings.push({
+          type: 'missingFile',
+          fileId: file.id,
+          path: file.relativePath,
+        })
+      }
+    })
     return sortWarnings(warnings)
   }
 
@@ -513,4 +513,27 @@ function sortWarnings(warnings: readonly ContextWarning[]): ContextWarning[] {
     const rightPath = 'path' in right ? right.path : ''
     return leftPath.localeCompare(rightPath)
   })
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = []
+  results.length = items.length
+  let nextIndex = 0
+  const workerCount = Math.min(concurrency, items.length)
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const currentIndex = nextIndex
+        nextIndex += 1
+        results[currentIndex] = await worker(items[currentIndex])
+      }
+    }),
+  )
+
+  return results
 }

@@ -48,15 +48,28 @@ export async function bootstrapLupinumContext(
     treeDataProvider: gitCommitsProvider,
     manageCheckboxStateManually: true,
   })
-  disposables.push(fileTree, filtersTree, gitTree)
+  disposables.push(
+    fileTreeProvider,
+    fileTypeFiltersProvider,
+    gitCommitsProvider,
+    fileTree,
+    filtersTree,
+    gitTree,
+  )
 
-  services.fileSelection.onDidChange(() => {
-    void services.workspaceState.setSelectionIntent(services.fileSelection.getPersistedIntent())
-    void handler?.postState()
-  })
-  services.gitSelection.onDidChange(() => {
-    void handler?.postState()
-  })
+  disposables.push(
+    new vscode.Disposable(
+      services.fileSelection.onDidChange(() => {
+        void services.workspaceState.setSelectionIntent(services.fileSelection.getPersistedIntent())
+        void handler?.postState()
+      }),
+    ),
+    new vscode.Disposable(
+      services.gitSelection.onDidChange(() => {
+        void handler?.postState()
+      }),
+    ),
+  )
 
   const showPanel = async () => {
     if (panel) {
@@ -155,7 +168,7 @@ export async function bootstrapLupinumContext(
   void refreshCommits(services, 'startup')
 
   return new vscode.Disposable(() => {
-    for (const disposable of disposables) {
+    for (const disposable of [...disposables].reverse()) {
       disposable.dispose()
     }
     panel?.dispose()
