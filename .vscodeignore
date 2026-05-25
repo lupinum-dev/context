@@ -17,6 +17,7 @@ benchmarks/reports/**
 package-lock.json
 pnpm-lock.yaml
 vite.config.*
+vite.webview.config.*
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/*.map
