@@ -1,0 +1,9 @@
+<context>
+<project_files>
+<file name="example.ts" path="/src/example.ts">
+
+export const value = 1;
+
+</file>
+</project_files>
+</context>

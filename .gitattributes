@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.svg text
+*.vsix binary -diff
+
+pnpm-lock.yaml -diff linguist-generated=true

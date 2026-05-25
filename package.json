@@ -1,0 +1,333 @@
+{
+  "name": "lupinum-context",
+  "displayName": "Lupinum Context",
+  "version": "0.1.0-pre.0",
+  "description": "Pick files, shape context, copy a clean LLM-ready bundle. A sharp VS Code tool for building AI chat context.",
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "ai context",
+    "ai prompts",
+    "claude",
+    "clipboard",
+    "code context",
+    "context",
+    "context management",
+    "copy context",
+    "developer tools",
+    "gemini",
+    "llm",
+    "openai",
+    "prompt",
+    "prompt templates",
+    "vscode"
+  ],
+  "homepage": "https://github.com/lupinum-dev/context",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/context/issues"
+  },
+  "license": "AGPL-3.0",
+  "author": {
+    "name": "Mat4m0",
+    "url": "https://lupinum.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lupinum-dev/context.git"
+  },
+  "publisher": "lupinum-dev",
+  "main": "./dist/extension.js",
+  "scripts": {
+    "vscode:prepublish": "vp run package",
+    "compile": "vp check && vp run build",
+    "watch": "vp build --watch & vp build --config vite.webview.config.mts --watch",
+    "build": "vp build && vp build --config vite.webview.config.mts",
+    "package": "vp run build",
+    "package:vsix": "vp exec vsce package --no-dependencies",
+    "deploy:local": "sh -c 'VSIX=$(node -p \"const p=require(\\\"./package.json\\\"); p.name + \\\"-\\\" + p.version + \\\".vsix\\\"\"); vp run package:vsix && \"${VSCODE_CLI:-/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code}\" --install-extension \"$VSIX\" --force'",
+    "check": "vp check",
+    "typecheck": "vp check --no-fmt --no-lint",
+    "check-types": "vp check --no-fmt --no-lint",
+    "lint": "vp lint src",
+    "test": "vp test run",
+    "smoke:vscode": "node scripts/vscode-smoke.mjs",
+    "bench:smoke": "node scripts/bench-smoke.mjs",
+    "bench:large": "node scripts/bench-smoke.mjs --scale large",
+    "test:boundaries": "node scripts/check-boundaries.mjs",
+    "validate": "vp check && vp test run && vp run test:boundaries && vp run build",
+    "changelog": "changelogen --hideAuthorEmail",
+    "release:prepare": "changelogen --bump --clean --hideAuthorEmail",
+    "release": "changelogen --release --clean --no-github --hideAuthorEmail",
+    "release:github": "changelogen gh release",
+    "prepare": "vp config"
+  },
+  "dependencies": {
+    "ignore": "7.0.5",
+    "vue": "3.5.34"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.24",
+    "@types/vscode": "1.96.0",
+    "@vitejs/plugin-vue": "6.0.7",
+    "@vscode/test-electron": "2.5.2",
+    "@vscode/vsce": "3.9.1",
+    "@vue/tsconfig": "0.9.1",
+    "changelogen": "0.6.2",
+    "ovsx": "0.10.12",
+    "typescript": "5.9.3",
+    "vite": "8.0.11",
+    "vite-plus": "0.1.21"
+  },
+  "contributes": {
+    "configuration": {
+      "title": "Lupinum Context",
+      "properties": {
+        "lupinumContext.useGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use your .gitignore file to filter out files and folders available for context"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "lupinum-context",
+          "title": "Lupinum Context",
+          "icon": "assets/lupinum-context.svg"
+        }
+      ]
+    },
+    "views": {
+      "lupinum-context": [
+        {
+          "icon": "assets/lupinum-context.svg",
+          "id": "lupinumContext.files",
+          "name": "Files",
+          "initialSize": 3,
+          "type": "tree"
+        },
+        {
+          "id": "lupinumContext.selectionFilters",
+          "name": "File Type Filters",
+          "initialSize": 1,
+          "type": "tree"
+        },
+        {
+          "id": "lupinumContext.gitCommits",
+          "name": "Git Commits",
+          "initialSize": 1,
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "lupinumContext.copyContext",
+        "title": "Copy Context to Clipboard",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "lupinumContext.refresh",
+        "title": "Refresh File List",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "lupinumContext.clearSelection",
+        "title": "Clear All Selections",
+        "category": "Lupinum Context",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "lupinumContext.includeAllFileTypeFilters",
+        "title": "Include All File Type Filters",
+        "category": "Lupinum Context",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "lupinumContext.excludeAllFileTypeFilters",
+        "title": "Exclude All File Type Filters",
+        "category": "Lupinum Context",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "lupinumContext.open",
+        "title": "Open Context Panel",
+        "category": "Lupinum Context",
+        "icon": "$(layout-panel)"
+      },
+      {
+        "command": "lupinumContext.showLogs",
+        "title": "Show Lupinum Context Logs",
+        "category": "Lupinum Context",
+        "icon": "$(output)"
+      },
+      {
+        "command": "lupinumContext.addCurrentFile",
+        "title": "Add Current File to Context",
+        "category": "Lupinum Context",
+        "icon": "$(add)"
+      },
+      {
+        "command": "lupinumContext.refreshGitCommits",
+        "title": "Refresh Git Commits",
+        "category": "Lupinum Context",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "lupinumContext.clearGitCommits",
+        "title": "Clear Commit Selection",
+        "category": "Lupinum Context",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "lupinumContext.selectLatestGitCommit",
+        "title": "Select Latest Commit",
+        "category": "Lupinum Context",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "lupinumContext.selectLatestThreeGitCommits",
+        "title": "Select Latest 3 Commits",
+        "category": "Lupinum Context",
+        "icon": "$(git-commit)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "lupinumContext.copyContext"
+        },
+        {
+          "command": "lupinumContext.refresh",
+          "when": "view == lupinumContext.files"
+        },
+        {
+          "command": "lupinumContext.open"
+        },
+        {
+          "command": "lupinumContext.showLogs"
+        },
+        {
+          "command": "lupinumContext.clearSelection"
+        },
+        {
+          "command": "lupinumContext.includeAllFileTypeFilters"
+        },
+        {
+          "command": "lupinumContext.excludeAllFileTypeFilters"
+        },
+        {
+          "command": "lupinumContext.addCurrentFile"
+        },
+        {
+          "command": "lupinumContext.refreshGitCommits"
+        },
+        {
+          "command": "lupinumContext.clearGitCommits"
+        },
+        {
+          "command": "lupinumContext.selectLatestGitCommit"
+        },
+        {
+          "command": "lupinumContext.selectLatestThreeGitCommits"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "lupinumContext.open",
+          "when": "view == lupinumContext.files",
+          "group": "navigation@1"
+        },
+        {
+          "command": "lupinumContext.copyContext",
+          "when": "view == lupinumContext.files",
+          "group": "navigation@2"
+        },
+        {
+          "command": "lupinumContext.refresh",
+          "when": "view == lupinumContext.files",
+          "group": "navigation@3"
+        },
+        {
+          "command": "lupinumContext.clearSelection",
+          "when": "view == lupinumContext.files",
+          "group": "navigation@4"
+        },
+        {
+          "command": "lupinumContext.showLogs",
+          "when": "view == lupinumContext.files",
+          "group": "navigation@5"
+        },
+        {
+          "command": "lupinumContext.includeAllFileTypeFilters",
+          "when": "view == lupinumContext.selectionFilters",
+          "group": "navigation@1"
+        },
+        {
+          "command": "lupinumContext.excludeAllFileTypeFilters",
+          "when": "view == lupinumContext.selectionFilters",
+          "group": "navigation@2"
+        },
+        {
+          "command": "lupinumContext.selectLatestGitCommit",
+          "when": "view == lupinumContext.gitCommits",
+          "group": "navigation@1"
+        },
+        {
+          "command": "lupinumContext.selectLatestThreeGitCommits",
+          "when": "view == lupinumContext.gitCommits",
+          "group": "navigation@2"
+        },
+        {
+          "command": "lupinumContext.refreshGitCommits",
+          "when": "view == lupinumContext.gitCommits",
+          "group": "navigation@3"
+        },
+        {
+          "command": "lupinumContext.clearGitCommits",
+          "when": "view == lupinumContext.gitCommits",
+          "group": "navigation@4"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "lupinumContext.addCurrentFile",
+          "when": "editorTextFocus",
+          "group": "9_cutcopypaste"
+        },
+        {
+          "command": "lupinumContext.open",
+          "when": "editorTextFocus",
+          "group": "9_cutcopypaste"
+        }
+      ]
+    }
+  },
+  "activationEvents": [
+    "onCommand:lupinumContext.addCurrentFile",
+    "onCommand:lupinumContext.clearGitCommits",
+    "onCommand:lupinumContext.clearSelection",
+    "onCommand:lupinumContext.copyContext",
+    "onCommand:lupinumContext.excludeAllFileTypeFilters",
+    "onCommand:lupinumContext.includeAllFileTypeFilters",
+    "onCommand:lupinumContext.open",
+    "onCommand:lupinumContext.refresh",
+    "onCommand:lupinumContext.refreshGitCommits",
+    "onCommand:lupinumContext.selectLatestGitCommit",
+    "onCommand:lupinumContext.selectLatestThreeGitCommits",
+    "onCommand:lupinumContext.showLogs",
+    "onView:lupinumContext.files",
+    "onView:lupinumContext.gitCommits",
+    "onView:lupinumContext.selectionFilters"
+  ],
+  "icon": "assets/lupinum-context-icon.png",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10",
+    "vscode": "^1.96.0"
+  },
+  "packageManager": "pnpm@10.0.0"
+}

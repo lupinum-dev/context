@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+
+      - name: Validate
+        run: pnpm run validate
+
+      - name: Run VS Code smoke test
+        run: xvfb-run -a pnpm run smoke:vscode
+
+      - name: Run smoke benchmark
+        run: pnpm run bench:smoke
+
+      - name: Package VSIX
+        run: pnpm run package:vsix
+
+      - name: Check VSIX contents
+        run: |
+          VSIX="lupinum-context-$(node -p "require('./package.json').version").vsix"
+          unzip -l "$VSIX" | tee /tmp/vsix-contents.txt
+          ! grep -E 'extension/(AGENTS|CLAUDE|CONTRIBUTING|CODE_OF_CONDUCT|docs/|\.contextignore|\.nvmrc|assets/(image-tny|lupinum-context-demo))' /tmp/vsix-contents.txt

@@ -1,0 +1,16 @@
+Audit prefix
+<context>
+<project_tree>
+demo
+└─ src/
+   └─ example.ts
+</project_tree>
+<project_files>
+<file name="example.ts" path="/src/example.ts">
+
+export const value = 1;
+
+</file>
+</project_files>
+</context>
+Review carefully.

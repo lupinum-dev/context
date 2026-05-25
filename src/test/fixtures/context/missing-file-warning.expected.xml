@@ -1,0 +1,5 @@
+<context>
+<context_warnings>
+<warning type="missing_file" path="src/example.ts">Selected file could not be read.</warning>
+</context_warnings>
+</context>
