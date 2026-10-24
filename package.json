@@ -65,7 +65,7 @@
   },
   "dependencies": {
     "ignore": "7.0.5",
-    "vue": "3.5.34"
+    "vue": "3.5.44"
   },
   "devDependencies": {
     "@types/node": "20.19.24",
